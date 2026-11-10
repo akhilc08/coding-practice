@@ -74,7 +74,7 @@ class FileStorage:
                 items[1] = user_id_1
         self.users[user_id_1] += self.users[user_id_2]
         self.users.pop(user_id_2)
-        self.backups.pop(user_id_2)
+        self.backups.pop(user_id_2, None)
         return self.users[user_id_1]
 
 
