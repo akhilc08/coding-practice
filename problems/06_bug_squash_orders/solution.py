@@ -5,13 +5,14 @@ Read spec.md first. This code has 8 bugs. Fix them so that
 """
 
 from __future__ import annotations
-
+from copy import deepcopy
 from collections import defaultdict
-
+import math
 
 class OrderSystem:
     def __init__(self, catalog: dict = {}) -> None:
-        self.products = catalog  # sku -> [price, stock]
+
+        self.products = deepcopy(catalog)  # sku -> [price, stock]
         self.coupons = {}  # code -> (percent_off, min_total)
         self.orders = {}  # order_id -> {"items", "total", "coupon", "cancelled"}
 
@@ -24,23 +25,27 @@ class OrderSystem:
     def restock(self, sku: str, qty: int) -> int | None:
         if sku not in self.products:
             return None
-        current = self.products[sku][1]
         self.products[sku][1] += qty
-        return current
+        #supposed to return new not old
+        return self.products[sku][1]
 
     def get_stock(self, sku: str) -> int | None:
-        return self.products[sku][1] if sku in self.products else None
+        if sku not in self.products: return None
+        #need to check if it is not in self.products first
+        return self.products[sku][1]
 
     def create_order(self, order_id: str, items: dict[str, int]) -> int | None:
         if order_id in self.orders or not items:
             return None
         total = 0
-        for sku, qty in items.items():
+        for sku, qty  in items.items():
             if sku not in self.products or self.products[sku][1] < qty:
                 return None
+        for sku, qty in items.items():
+
             self.products[sku][1] -= qty
             total += self.products[sku][0] * qty
-        self.orders[order_id] = {"items": items, "total": total, "coupon": None, "cancelled": False}
+        self.orders[order_id] = {"items": deepcopy(items), "total": total, "coupon": None, "cancelled": False}
         return total
 
     def add_coupon(self, code: str, percent_off: int, min_total: int) -> bool:
@@ -50,20 +55,21 @@ class OrderSystem:
         return True
 
     def apply_coupon(self, order_id: str, code: str) -> int | None:
-        order = self.orders.get(order_id)
+        order = self.orders.get(order_id, None)
         if order is None or code not in self.coupons:
             return None
         if order["cancelled"] or order["coupon"] is not None:
             return None
         pct, min_total = self.coupons[code]
-        if order["total"] <= min_total:
+        if order["total"] < min_total:
             return None
-        order["total"] -= round(order["total"] * pct / 100)
+        order["total"] -= math.floor(order["total"] * pct // 100)
         order["coupon"] = code
         return order["total"]
 
     def get_total(self, order_id: str) -> int | None:
-        return self.orders[order_id]["total"] if order_id in self.orders else None
+        if order_id not in self.orders: return None
+        return self.orders[order_id]["total"]
 
     def cancel_order(self, order_id: str) -> bool:
         order = self.orders.get(order_id)
@@ -71,6 +77,7 @@ class OrderSystem:
             return False
         for sku, qty in order["items"].items():
             self.products[sku][1] += qty
+        order["cancelled"] = True
         return True
 
     def top_products(self, n: int) -> list[str]:
@@ -79,5 +86,5 @@ class OrderSystem:
             if not order["cancelled"]:
                 for sku, qty in order["items"].items():
                     sold[sku] += qty
-        ranked = sorted(sold.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)
+        ranked = sorted(sold.items(), key=lambda kv: (-kv[1], kv[0]))
         return [f"{sku}({units})" for sku, units in ranked[:n]]
