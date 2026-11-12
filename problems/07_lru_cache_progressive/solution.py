@@ -5,8 +5,7 @@ pass:  pytest problems/07_lru_cache_progressive/test_level1.py
 """
 
 from __future__ import annotations
-from time import time
-from xxlimited import new
+
 
 class Node:
     def __init__(self, key, val, exp = -1):
